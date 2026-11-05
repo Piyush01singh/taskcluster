@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/mcuadros/go-defaults"
@@ -161,4 +162,45 @@ func TestPrivilegedGenericWorkerBinaryFailsTask(t *testing.T) {
 			status.Status.Runs[0].State, status.Status.Runs[0].ReasonResolved)
 	}
 	t.Logf("Task %v resolved as exception/internal-error as required.", taskID)
+}
+
+func TestDeleteDirDoesNotFollowSymlinks(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("see TestRemoveAllDoesNotFollowJunctions")
+	}
+	base := t.TempDir()
+
+	secretDir := filepath.Join(base, "secret")
+	secretFile := filepath.Join(secretDir, "secret.txt")
+	if err := os.Mkdir(secretDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(secretFile, []byte("secret"), 0400); err != nil {
+		t.Fatal(err)
+	}
+
+	// taskDirsIn never passes a symlink to deleteDir, but GNU chmod follows
+	// one given as its argument, so this catches chmod -R being reintroduced.
+	links := map[string]string{
+		filepath.Join(base, "task_dir_link"):  secretDir,
+		filepath.Join(base, "task_file_link"): secretFile,
+	}
+	for link, target := range links {
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		if err := deleteDir(link); err != nil {
+			t.Fatalf("deleteDir(%v): %v", link, err)
+		}
+		if _, err := os.Lstat(link); !os.IsNotExist(err) {
+			t.Errorf("%v still there, %v", link, err)
+		}
+	}
+	fi, err := os.Stat(secretFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode := fi.Mode().Perm(); mode != 0400 {
+		t.Errorf("symlink was followed, secret mode changed from 0400 to %#o", mode)
+	}
 }
