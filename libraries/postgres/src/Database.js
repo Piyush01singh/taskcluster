@@ -137,7 +137,7 @@ class Database {
         /** @param {string} key */
         const validNamedArgument = key => /^[a-z0-9_]+_in$/.test(key);
         const hasNamedArguments =
-          args.length === 1 && _.isPlainObject(args[0]) && Object.keys(args[0]).every(validNamedArgument);
+          args.length === 1 && _.isPlainObject(args[0]) && Object.keys(args[0]).length > 0 && Object.keys(args[0]).every(validNamedArgument);
         const res = await this._withClient(method.mode, async client => {
           await client.query(method.mode === READ ? 'begin read only' : 'begin read write');
           try {
