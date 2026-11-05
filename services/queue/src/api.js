@@ -902,7 +902,7 @@ builder.declare(
     }
 
     // schema defines 10.000 maximum dependencies but deployment can specify lower values
-    if (taskDef.dependencies && taskDef.dependencies.length > this.maxDependencies) {
+    if (taskDef.dependencies && taskDef.dependencies.length > this.taskMaxDependencies) {
       return res.reportError('InputError', 'task.dependencies exceeds the maximum allowed number of dependencies', {
         maxDependencies: this.taskMaxDependencies,
       });
